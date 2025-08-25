@@ -1,39 +1,37 @@
-
 #include "MySQLWorker.h"
 
-#include "BlockingQueue.h"
-#include "SQLOperation.h"
 #include "MySQLConn.h"
+#include "SQLOperation.h"
+#include "BlockingQueue.h"
 
-MySQLWorker::MySQLWorker(MySQLConn *conn, BlockingQueue<SQLOperation *> &task_queue)
-    : conn_(conn), task_queue_(task_queue)
-{
-}
+MySQLWorker::MySQLWorker(MySQLConn *conn, BlockingQueue<SQLOperation*> &task_queue) 
+    : conn_(conn), task_queue_(&task_queue) 
+{}
 
-MySQLWorker::~MySQLWorker()
-{
+MySQLWorker::~MySQLWorker() {
     Stop();
 }
 
-void MySQLWorker::Start()
-{
+void MySQLWorker::Start() {
     worker_ = std::thread(&MySQLWorker::Worker, this);
 }
 
-void MySQLWorker::Stop()
-{
+void MySQLWorker::Stop() {
     if (worker_.joinable()) {
         worker_.join();
     }
 }
 
+// 线程的入口函数
 void MySQLWorker::Worker() {
     while (true) {
         SQLOperation *op = nullptr;
-        if (!task_queue_.Pop(op)) {
-            break;
+        if (!task_queue_->Pop(op)) {
+            break; // 退出线程
         }
-        op->Execute(conn_);
-        delete op;
+        if (op) {
+            op->Execute(conn_);
+            delete op;
+        }
     }
 }
