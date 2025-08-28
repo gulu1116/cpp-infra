@@ -56,7 +56,7 @@ public:
 
     // 移动赋值
     shared_ptr<T>& operator=(shared_ptr<T>&& other) noexcept {
-        if (this != other) {
+        if (this != &other) {
             release();
             ptr_ = other.ptr_;
             ref_count_ = other.ref_count_;
@@ -76,7 +76,7 @@ public:
     }
 
     std::size_t use_count() const {
-        return ref_count_ ? ref_count_->load() : 0;
+        return ref_count_ ? ref_count_->load(std::memory_order_acquire) : 0;
     }
 
     T* get() const {
