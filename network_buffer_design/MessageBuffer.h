@@ -85,6 +85,7 @@ public:
         return buffer_.size();
     }
 
+    // 数据腾挪到最前面
     void Normalize()
     {
         if (rpos_ > 0)
@@ -95,6 +96,9 @@ public:
         }
     }
 
+    // 检查是否需要扩容
+    // n = read();  --->  确认缓冲区剩余空间是否足够
+    // 1. 将已使用的数据腾挪到首部后空间足够  2. 腾挪后空间也不够  3. 剩余空间足够（不用考虑）
     void EnsureFreeSpace(std::size_t size)
     {
         if (GetBufferSize() - GetActiveSize() < size)
@@ -144,14 +148,14 @@ public:
     // 2. 避免了每次都从栈上拷贝到堆上
     int Recv(int fd, int *err)
     {
-        char extra[65535]; // 65535
+        char extra[65535]; // 65535 UDP 最大值
         struct iovec iov[2];
         iov[0].iov_base = GetWritePointer();
         iov[0].iov_len = GetFreeSize();
         iov[1].iov_base = extra;
         iov[1].iov_len = sizeof(extra);
         std::size_t n = readv(fd, iov, 2);
-        if (n < 0)
+        if (n < 0)  // 错误
         {
             *err = errno;
             return n;
@@ -166,11 +170,11 @@ public:
             WriteCompleted(n);
             return n;
         }
-        else
+        else // 后面的剩余空间不够
         {
             // WRN: GetfreeSize() 在 WriteCompleted() 中会被更新, extra_size 需要提前计算
             std::size_t extra_size = n - GetFreeSize();
-            WriteCompleted(GetFreeSize());
+            WriteCompleted(GetFreeSize());  // 已经用完剩余空间
             Write(reinterpret_cast<uint8_t *>(extra), extra_size);
             return n;
         }
@@ -181,3 +185,26 @@ private:
     std::size_t rpos_;
     std::size_t wpos_;
 };
+
+
+/*
+    这里的问题是：每次都有两次拷贝，
+    char buffer[65535];
+    int n = read(fd, buffer, 65535);
+    if (n == 0) {
+        
+    } else if (n < 0) {
+        // ET 
+        if (errno == EINTR) {
+        }
+        if (errno == EAFAIN || errno == EWOULDBLOCK) {
+            // 读取数据时没有数据可读
+        } else {
+            // 发生错误 
+        }
+    } else {
+        // 读取到数据
+        write(buffer, n) 
+    }
+
+*/
