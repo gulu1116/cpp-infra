@@ -2,6 +2,7 @@
 
 #include "MessageBuffer.h"
 #include <memory>
+#include <string>
 #include <functional>
 
 class EventLoop;
