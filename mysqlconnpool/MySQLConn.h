@@ -7,7 +7,7 @@
 // sql 仅仅只能用作指针或引用
 namespace sql 
 {
-    class Driveer;
+    class Driver;
     class Connection;
     class SQLException;
     class ResultSet;
